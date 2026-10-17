@@ -1,0 +1,9 @@
+{
+  "name": "Feyza Nur Dükkan",
+  "short_name": "FeyzaDukkan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#d4af37",
+  "icons": [{ "src": "/vercel.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

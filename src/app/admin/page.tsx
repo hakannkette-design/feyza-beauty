@@ -1,0 +1,97 @@
+"use client";
+import { useState, useEffect, useRef } from "react";
+export default function AdminPage(){
+  const [data,setData]=useState<any>(null);
+  const [isLogin,setIsLogin]=useState(false);
+  const [loginU,setLoginU]=useState(""); const [loginP,setLoginP]=useState("");
+  const [tab,setTab]=useState<"randevu"|"musteriler"|"personel"|"islemler"|"beforeafter"|"dm"|"ciro">("randevu");
+  const [yeniIslem,setYeniIslem]=useState({ad:"", fiyat:""});
+  const [yeniPersonel,setYeniPersonel]=useState({ad:"", kullanici:"", sifre:""});
+  const [seciliDM,setSeciliDM]=useState<string|null>(null);
+  const [mesajInput,setMesajInput]=useState("");
+  const [seciliIslemBA,setSeciliIslemBA]=useState("");
+  const [beforeTmp,setBeforeTmp]=useState<string|null>(null);
+  const [afterTmp,setAfterTmp]=useState<string|null>(null);
+  const prevChat=useRef(0);
+  const audioRef=useRef<HTMLAudioElement|null>(null);
+  useEffect(()=>{
+    const logged=localStorage.getItem("feyza_admin_login");
+    if(logged==="ok") setIsLogin(true);
+    const load=()=>{
+      const s=localStorage.getItem("feyza_full_data_v2");
+      if(s){
+        const p=JSON.parse(s);
+        p.acik=p.acik??true; p.personel=p.personel||[]; p.islemler=p.islemler||[]; p.randevular=p.randevular||[]; p.chat=p.chat||[]; p.bildirimler=p.bildirimler||[]; p.musteriler=p.musteriler||[]; p.beforeAfter=p.beforeAfter||[]; p.ciroArsiv=p.ciroArsiv||[];
+        if(p.chat.length>prevChat.current && prevChat.current!==0) audioRef.current?.play().catch(()=>{});
+        prevChat.current=p.chat.length;
+        setData(p);
+      } else setData({acik:true, personel:[], islemler:[], randevular:[], chat:[], bildirimler:[], musteriler:[], beforeAfter:[], ciroArsiv:[]});
+    };
+    load(); const iv=setInterval(load,1000); return ()=>clearInterval(iv);
+  },[]);
+  useEffect(()=>{ if(data) localStorage.setItem("feyza_full_data_v2", JSON.stringify(data)); },[data]);
+  if(!data) return null;
+  if(!isLogin){
+    return (
+      <div className="min-h-screen bg-[#fdf2f8] flex items-center justify-center p-6">
+        <div className="w-full max-w-sm bg-white border border-[#fbcfe8] rounded-[24px] p-6 shadow-sm">
+          <h1 className="text-center font-bold text-zinc-900 text-[15px]">Feyza Nur Hatipoğlu</h1>
+          <p className="text-center text-[10px] tracking-[3px] text-[#db2777]/60 font-bold">BEAUTY ADMIN</p>
+          <input value={loginU} onChange={e=>setLoginU(e.target.value)} placeholder="Kullanıcı adı" className="w-full bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm mt-6 outline-none text-zinc-900" />
+          <input value={loginP} type="password" onChange={e=>setLoginP(e.target.value)} placeholder="Şifre" className="w-full bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm mt-3 outline-none text-zinc-900" />
+          <button onClick={()=>{ if(loginU==="FeyzaNur" && loginP==="368755"){ localStorage.setItem("feyza_admin_login","ok"); setIsLogin(true);} else alert("Hatalı giriş"); }} className="w-full bg-[#db2777] text-white font-bold py-3 rounded-full mt-5 text-sm">Giriş Yap</button>
+        </div>
+      </div>
+    );
+  }
+  const now=new Date(); const buAy=now.getMonth(); const buYil=now.getFullYear();
+  const gecenAy=buAy===0?11:buAy-1; const gecenAyYil=buAy===0?buYil-1:buYil;
+  const buAyOnay=(data.randevular||[]).filter((r:any)=> r.durum==="onay" && new Date(r.saat).getMonth()===buAy && new Date(r.saat).getFullYear()===buYil);
+  const gecenAyOnay=(data.randevular||[]).filter((r:any)=> r.durum==="onay" && new Date(r.saat).getMonth()===gecenAy && new Date(r.saat).getFullYear()===gecenAyYil);
+  const buAyCiro=buAyOnay.reduce((a:any,b:any)=>a+Number(b.fiyat||0),0);
+  const gecenAyCiro=gecenAyOnay.reduce((a:any,b:any)=>a+Number(b.fiyat||0),0);
+  const yuzde=gecenAyCiro===0? 100: Math.round(((buAyCiro-gecenAyCiro)/gecenAyCiro)*100);
+  const stats:any={}; buAyOnay.forEach((r:any)=>{ if(!stats[r.personel]) stats[r.personel]={adet:0, ciro:0}; stats[r.personel].adet++; stats[r.personel].ciro+=Number(r.fiyat||0); });
+  const dmList:any={}; (data.chat||[]).filter((m:any)=> m.personel?.toLowerCase().includes("feyza")).forEach((m:any)=>{ if(!dmList[m.musteri]) dmList[m.musteri]={musteri:m.musteri, mesajlar:[]}; dmList[m.musteri].mesajlar.push(m); });
+  return (
+    <div className="min-h-screen bg-[#fdf2f8] text-zinc-800">
+      <audio ref={audioRef} src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3" preload="auto" />
+      <div className="max-w-[720px] mx-auto p-3">
+        <div className="bg-white border border-[#fbcfe8] rounded-[24px] p-5 shadow-sm flex justify-between items-center">
+          <div className="leading-tight"><h1 className="font-bold text-[16px] text-zinc-900">Feyza Nur Hatipoğlu</h1><p className="font-bold text-[10px] tracking-[3px] text-[#db2777]/70">BEAUTY ADMIN</p><p className="text-[13px] mt-2 font-bold text-zinc-900">Toplam Müşteri: {data.musteriler?.length||0}</p><p className="text-[12px] text-zinc-700">Bu Ay: <span className="font-bold text-[#be185d]">{buAyCiro}₺</span> {yuzde>=0? <span className="text-green-600 font-bold">↑ %{yuzde} artış</span>:<span className="text-red-600 font-bold">↓ %{Math.abs(yuzde)} azalış</span>}</p></div>
+          <div className="flex flex-col gap-2 items-end"><button onClick={()=>setData({...data, acik:!data.acik})} className={`px-4 py-2 rounded-full text-xs font-bold text-white ${data.acik? "bg-[#db2777]":"bg-zinc-400"}`}>{data.acik? "AÇIK":"KAPALI"}</button><button onClick={()=>{localStorage.removeItem("feyza_admin_login"); setIsLogin(false);}} className="text-[10px] text-zinc-500">Çıkış</button></div>
+        </div>
+        <div className="flex gap-2 overflow-x-auto py-4">
+          {[{k:"randevu",a:"Randevular"},{k:"musteriler",a:`Müşteriler (${data.musteriler?.length||0})`},{k:"personel",a:"Personel"},{k:"islemler",a:"İşlemler"},{k:"beforeafter",a:"Before/After"},{k:"dm",a:`DM (${Object.keys(dmList).length})`},{k:"ciro",a:"Ciro & Arşiv"}].map((t:any)=><button key={t.k} onClick={()=>{setTab(t.k as any); setSeciliDM(null);}} className={`text-[11px] px-4 py-2.5 rounded-full border whitespace-nowrap font-medium ${tab===t.k? "bg-[#db2777] text-white border-[#db2777]":"bg-white border-[#fbcfe8] text-zinc-600"}`}>{t.a}</button>)}
+        </div>
+        {tab==="musteriler"&&<div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px]"><p className="font-bold text-sm text-zinc-900">Müşteri Listesi - Kendi Kaydını Kendisi Yapıyor</p><p className="text-[12px] font-bold text-[#db2777] mt-2">Toplam: {data.musteriler?.length||0} müşteri - Yeni müşteri eklenince sayı otomatik artar</p><div className="mt-3 space-y-2">{data.musteriler?.length===0&&<p className="text-xs text-zinc-500 text-center py-4">Henüz müşteri yok</p>}{data.musteriler?.map((m:any)=><div key={m.id} className="flex justify-between items-center py-2.5 border-b border-[#fce7f3] last:border-0"><div><p className="text-sm font-bold text-zinc-900">{m.ad} {m.soyad} - @{m.kullanici}</p><p className="text-[11px] text-zinc-600">📞 {m.telefon} | Şifre: {m.sifre}</p></div><button onClick={()=>{ if(confirm("Sil?")) setData({...data, musteriler:data.musteriler.filter((x:any)=>x.id!==m.id)}); }} className="text-red-500 text-xs font-bold border border-red-200 px-3 py-1 rounded-full bg-white">Sil</button></div>)}</div></div>}
+        {tab==="personel"&&<div className="space-y-3"><div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px] space-y-2"><p className="font-bold text-sm text-zinc-900">Personel Ekle - Kullanıcı Adı + Şifre</p><input value={yeniPersonel.ad} onChange={e=>setYeniPersonel({...yeniPersonel, ad:e.target.value})} placeholder="Ad Soyad" className="w-full bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900" /><div className="grid grid-cols-2 gap-2"><input value={yeniPersonel.kullanici} onChange={e=>setYeniPersonel({...yeniPersonel, kullanici:e.target.value})} placeholder="Kullanıcı adı" className="bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900" /><input value={yeniPersonel.sifre} type="password" onChange={e=>setYeniPersonel({...yeniPersonel, sifre:e.target.value})} placeholder="Şifre" className="bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900" /></div><button onClick={()=>{ if(!yeniPersonel.ad||!yeniPersonel.kullanici||!yeniPersonel.sifre) return alert("Doldur"); setData({...data, personel:[...data.personel, {id:Date.now(), ...yeniPersonel, dukkanda:false}]}); setYeniPersonel({ad:"", kullanici:"", sifre:""}); }} className="w-full bg-[#db2777] text-white font-bold py-3 rounded-full text-sm">Personel Ekle</button></div><div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px]"><p className="font-bold text-sm text-zinc-900 mb-2">Personeller Dükkanda mı?</p>{data.personel.map((p:any)=><div key={p.id} className="flex justify-between items-center py-2.5 border-b border-[#fce7f3] last:border-0"><div><p className="text-sm font-bold text-zinc-900">{p.ad}</p><p className="text-[11px] text-zinc-600">@{p.kullanici}</p></div><div className="flex gap-2 items-center"><span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${p.dukkanda? "bg-green-100 text-green-700":"bg-zinc-100 text-zinc-500"}`}>{p.dukkanda? "Dükkanda":"Değil"}</span><button onClick={()=>setData({...data, personel:data.personel.map((x:any)=>x.id===p.id? {...x, dukkanda:!x.dukkanda}:x)})} className="text-xs text-[#db2777] font-bold">Değiştir</button></div></div>)}</div></div>}
+        {tab==="islemler"&&<div className="space-y-3"><div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px] space-y-2"><p className="font-bold text-sm text-zinc-900">İşlem Ekle + Fiyatlandır</p><input value={yeniIslem.ad} onChange={e=>setYeniIslem({...yeniIslem, ad:e.target.value})} placeholder="İşlem adı" className="w-full bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900" /><input value={yeniIslem.fiyat} onChange={e=>setYeniIslem({...yeniIslem, fiyat:e.target.value})} placeholder="Fiyat ₺" className="w-full bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900" /><button onClick={()=>{ if(!yeniIslem.ad||!yeniIslem.fiyat) return alert("Doldur"); setData({...data, islemler:[...data.islemler, {id:Date.now(), ...yeniIslem}]}); setYeniIslem({ad:"", fiyat:""}); }} className="w-full bg-[#db2777] text-white font-bold py-3 rounded-full text-sm">İşlem Ekle</button></div>{data.islemler.map((i:any)=><div key={i.id} className="bg-white border border-[#fbcfe8] p-3 rounded-[16px] flex justify-between"><p className="text-sm font-bold text-zinc-900">{i.ad} <span className="text-[#be185d]">{i.fiyat}₺</span></p><button onClick={()=>setData({...data, islemler:data.islemler.filter((x:any)=>x.id!==i.id), beforeAfter:data.beforeAfter.filter((b:any)=>b.islem!==i.ad)})} className="text-red-500 text-xs font-bold">Sil</button></div>)}</div>}
+        {tab==="beforeafter"&&<div className="space-y-3"><div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px] space-y-3"><p className="font-bold text-sm text-zinc-900">Before / After - İşlem Seç + 2 Foto</p><select value={seciliIslemBA} onChange={e=>setSeciliIslemBA(e.target.value)} className="w-full bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900"><option value="">İşlem seç</option>{data.islemler.map((i:any)=><option key={i.id} value={i.ad}>{i.ad} - {i.fiyat}₺</option>)}</select>{seciliIslemBA&&<div className="grid grid-cols-2 gap-3"><div><p className="text-[11px] font-bold text-zinc-700 mb-1">BEFORE</p><input type="file" accept="image/*" onChange={e=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>setBeforeTmp(r.result as string); r.readAsDataURL(f); }} className="text-[11px]" />{beforeTmp&&<img src={beforeTmp} className="w-full h-28 object-cover rounded-xl mt-2 border border-[#fbcfe8]" />}</div><div><p className="text-[11px] font-bold text-[#db2777] mb-1">AFTER</p><input type="file" accept="image/*" onChange={e=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>setAfterTmp(r.result as string); r.readAsDataURL(f); }} className="text-[11px]" />{afterTmp&&<img src={afterTmp} className="w-full h-28 object-cover rounded-xl mt-2 border border-[#fbcfe8]" />}</div></div>}<button onClick={()=>{ if(!seciliIslemBA||!beforeTmp||!afterTmp) return alert("Eksik"); setData({...data, beforeAfter:[...data.beforeAfter, {id:Date.now(), islem:seciliIslemBA, before:beforeTmp, after:afterTmp}]}); setBeforeTmp(null); setAfterTmp(null); setSeciliIslemBA(""); }} className="w-full bg-[#db2777] text-white font-bold py-3 rounded-full text-sm">Kaydet</button></div>{data.beforeAfter.map((b:any)=><div key={b.id} className="bg-white border border-[#fbcfe8] p-3 rounded-[20px]"><p className="text-sm font-bold text-zinc-900 mb-2">{b.islem}</p><div className="grid grid-cols-2 gap-2"><img src={b.before} className="w-full h-36 object-cover rounded-xl" /><img src={b.after} className="w-full h-36 object-cover rounded-xl" /></div><button onClick={()=>setData({...data, beforeAfter:data.beforeAfter.filter((x:any)=>x.id!==b.id)})} className="text-red-500 text-xs font-bold mt-2">Sil</button></div>)}</div>}
+        {tab==="randevu"&&<div className="space-y-2">{data.randevular.map((r:any)=><div key={r.id} className="bg-white border border-[#fbcfe8] p-4 rounded-[16px]"><p className="text-sm font-bold text-zinc-900">{r.musteri} - {r.islem} - {r.fiyat}₺</p><p className="text-xs text-zinc-600">{new Date(r.saat).toLocaleString()} - {r.personel} - {r.durum}</p><div className="flex gap-2 mt-3"><button onClick={()=>setData({...data, randevular:data.randevular.map((x:any)=>x.id===r.id? {...x, durum:"onay"}:x)})} className="bg-green-600 text-white px-4 py-1.5 rounded-full text-xs font-bold">Onayla</button><button onClick={()=>setData({...data, randevular:data.randevular.filter((x:any)=>x.id!==r.id)})} className="bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-bold">İptal</button></div></div>)}</div>}
+        {tab==="ciro"&&<div className="space-y-3"><div className="bg-white border border-[#fbcfe8] p-5 rounded-[20px]"><p className="font-bold text-sm text-zinc-900">Aylık Ciro</p><p className="text-3xl font-bold text-[#be185d] mt-2">{buAyCiro}₺</p><p className="text-sm text-zinc-700 mt-1">Geçen ay: {gecenAyCiro}₺ {yuzde>=0? <span className="text-green-600 font-bold">↑ %{yuzde}</span>:<span className="text-red-600 font-bold">↓ %{Math.abs(yuzde)}</span>}</p></div><div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px]"><p className="font-bold text-sm text-zinc-900 mb-2">Personel Ciro</p>{Object.entries(stats).map(([ad,s]:any)=><div key={ad} className="flex justify-between py-2.5 border-b border-[#fce7f3] last:border-0"><p className="text-sm text-zinc-900">{ad}</p><p className="text-sm font-bold text-zinc-900">{s.adet} - {s.ciro}₺</p></div>)}</div><button onClick={()=>{ const arsiv={ay:`${buAy+1}/${buYil}`, ciro:buAyCiro, personel:stats, tarih:new Date().toISOString()}; setData({...data, ciroArsiv:[...data.ciroArsiv, arsiv], randevular:[]}); }} className="w-full bg-zinc-900 text-white py-3.5 rounded-full text-sm font-bold">Ay Sonu Arşive At & Yenile</button><div className="bg-white border border-[#fbcfe8] p-4 rounded-[20px]"><p className="font-bold text-sm text-zinc-900 mb-2">Arşiv</p>{data.ciroArsiv.map((a:any)=><div key={a.tarih} className="py-2 border-b border-[#fce7f3] last:border-0"><p className="text-sm font-bold text-zinc-900">{a.ay} - {a.ciro}₺</p><p className="text-[11px] text-zinc-600">{Object.entries(a.personel||{}).map(([k,v]:any)=>`${k}: ${v.adet} - ${v.ciro}₺`).join(" | ")}</p></div>)}</div></div>}
+        {tab==="dm"&&<div className="space-y-3">
+          {!seciliDM? <div className="space-y-2"><div className="flex justify-between items-center"><p className="text-sm font-bold text-zinc-900">Sana Gelen DM'ler - Anlık</p><button onClick={()=>{ if(confirm("Tüm DM temizlensin mi?")) setData({...data, chat:data.chat.filter((m:any)=>!m.personel?.toLowerCase().includes("feyza"))}); }} className="text-xs text-red-500 font-bold border border-red-200 px-3 py-1 rounded-full bg-white">Tümünü Temizle</button></div>{Object.values(dmList).map((dm:any)=><div key={dm.musteri} className="bg-white border border-[#fbcfe8] p-3 rounded-[16px] flex justify-between items-center"><button onClick={()=>setSeciliDM(dm.musteri)} className="text-left flex-1"><p className="text-sm font-bold text-zinc-900">{dm.musteri}</p><p className="text-[11px] text-zinc-600 truncate">{dm.mesajlar[dm.mesajlar.length-1]?.mesaj}</p></button><button onClick={()=>setData({...data, chat:data.chat.filter((m:any)=>m.musteri!==dm.musteri)})} className="text-[10px] text-red-500 font-bold ml-2">Temizle</button></div>)}</div>
+          : <div className="flex flex-col h-[75vh] bg-white border border-[#fbcfe8] rounded-[20px] overflow-hidden">
+              <div className="p-3 border-b border-[#fce7f3] flex justify-between items-center bg-white"><div className="flex gap-2 items-center"><button onClick={()=>setSeciliDM(null)} className="text-[#db2777] font-bold text-sm">← Geri</button><p className="text-sm font-bold text-zinc-900">{seciliDM}</p></div><button onClick={()=>{ setData({...data, chat:data.chat.filter((m:any)=>m.musteri!==seciliDM)}); setSeciliDM(null); }} className="text-[11px] text-red-500 font-bold border border-red-200 px-3 py-1 rounded-full">Bu Sohbeti Temizle</button></div>
+              <div className="flex-1 p-3 overflow-y-auto bg-[#fdf2f8] flex flex-col gap-3">
+                {(dmList[seciliDM]?.mesajlar||[]).sort((a:any,b:any)=>new Date(a.zaman).getTime()-new Date(b.zaman).getTime()).map((m:any)=>{
+                  const isMe = m.benden===true;
+                  return (
+                    <div key={m.id} className={`flex w-full flex-col ${isMe? "items-end":"items-start"}`}>
+                      <p className={`text-[10px] font-bold mb-1 px-1 ${isMe? "text-[#db2777]":"text-zinc-500"}`}>{isMe? "Sen - Feyza Nur Hatipoğlu": m.musteri}</p>
+                      <div className={`max-w-[75%] px-4 py-2.5 rounded-[18px] text-[13px] leading-[18px] shadow-sm ${isMe? "bg-[#db2777] text-white rounded-br-[4px]":"bg-white border border-[#fbcfe8] text-zinc-900 rounded-bl-[4px]"}`}>
+                        <p className="whitespace-pre-wrap break-words">{m.mesaj}</p>
+                        <p className={`text-[9px] mt-1 ${isMe? "text-white/70 text-right":"text-zinc-400 text-left"}`}>{new Date(m.zaman).toLocaleTimeString().slice(0,5)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="p-3 border-t border-[#fce7f3] flex gap-2 bg-white"><input value={mesajInput} onChange={e=>setMesajInput(e.target.value)} placeholder="Cevap yaz..." className="flex-1 bg-[#fdf2f8] border border-[#fbcfe8] rounded-full px-4 py-3 text-sm outline-none text-zinc-900" /><button onClick={()=>{ if(!mesajInput.trim()||!seciliDM) return; const yeni={id:Date.now(), musteri:seciliDM, personel:"Feyza Nur Hatipoğlu", mesaj:mesajInput.trim(), benden:true, zaman:new Date().toISOString()}; setData({...data, chat:[...data.chat, yeni]}); setMesajInput(""); }} className="bg-[#db2777] text-white px-6 rounded-full font-bold text-sm">Gönder</button></div>
+            </div>}
+        </div>}
+      </div>
+    </div>
+  );
+}
